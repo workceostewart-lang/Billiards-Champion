@@ -11,6 +11,20 @@ export const BALL_GROUPS = Object.freeze({
   STRIPES: "stripes",
 });
 
+export const TUTORIAL_LESSON_COUNT = 5;
+
+export function tutorialRequirementMet(step, progress = {}) {
+  const power = Number(progress.power) || 0;
+  const spinMagnitude = Number(progress.spinMagnitude) || 0;
+  const bankBounces = Number(progress.bankBounces) || 0;
+  if (step === 0) return true;
+  if (step === 1) return progress.aiming === true && power >= 5;
+  if (step === 2) return power >= 35;
+  if (step === 3) return spinMagnitude >= 0.35;
+  if (step === 4) return bankBounces >= 1 && power >= 35;
+  return false;
+}
+
 export function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }

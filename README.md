@@ -9,9 +9,10 @@ A responsive precision-first 8-ball game for desktop and mobile browsers.
 - Pull-back mouse and touch shooting
 - Three-rail trajectory preview, object-ball impact guide, power %, and angle readout
 - Draggable topspin, draw, and side-English control
+- Five-step interactive tutorial covering the table, aiming, power, English, and bank shots
 - Solo practice, three CPU difficulty levels, and room-code multiplayer entry
 - Fully visible 2:1 table at a 390×844 mobile viewport
-- Saved sound, difficulty, match, and run statistics
+- Saved sound, tutorial completion, difficulty, match, and run statistics
 
 ## Commands
 
@@ -29,6 +30,6 @@ See `Billiards-Champion-PRD.md` and `.agent` for product requirements and shippi
 
 ## Deployment
 
-The Cloudflare Worker serves the static Vite build at:
+The production game is bundled into FantomZone at:
 
-`https://billiards-champion.fantomzone.app`
+`https://fantomzone.app/games/billiards-champion/`

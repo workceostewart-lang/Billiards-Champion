@@ -4,6 +4,7 @@ import Matter from "matter-js";
 import {
   BALL_GROUPS,
   TABLE,
+  TUTORIAL_LESSON_COUNT,
   ballGroup,
   clamp,
   evaluateEightBall,
@@ -13,6 +14,7 @@ import {
   rackOrder,
   rackPositions,
   shotAngleDegrees,
+  tutorialRequirementMet,
 } from "./game-rules.js";
 
 const { Bodies, Body, Composite, Engine, Events } = Matter;
@@ -44,7 +46,53 @@ const state = {
   firstHit: null,
   roomCode: "",
   gameOver: false,
+  tutorialStep: 0,
+  tutorialReady: true,
+  tutorialComplete: saved.tutorialComplete === true,
 };
+
+const TUTORIAL_STEPS = [
+  {
+    kicker: "WELCOME TO THE CLUB",
+    title: "Know the table",
+    copy: "You play on one shared 8-ball table. Clear solids or stripes, then sink the 8-ball. The break never assigns a group.",
+    tip: "All six pockets, every ball, and the complete 2:1 table stay visible.",
+    target: "table",
+    action: "START AIMING",
+  },
+  {
+    kicker: "LESSON 2 • AIM",
+    title: "Find your line",
+    copy: "Press on the table and pull away from the cue ball. The thick white guide shows the cue ball's exact path.",
+    tip: "Pull at least a little, then release. This lesson will not strike the ball yet.",
+    target: "table",
+    action: "NEXT: POWER",
+  },
+  {
+    kicker: "LESSON 3 • POWER",
+    title: "Control the strike",
+    copy: "Pull farther until the left power meter reaches 35% or more. The colored fill and number always agree.",
+    tip: "Short pull for touch. Long pull for a firm break.",
+    target: "power",
+    action: "NEXT: ENGLISH",
+  },
+  {
+    kicker: "LESSON 4 • SPIN",
+    title: "Add English",
+    copy: "Drag the red tip dot away from center. Top adds follow, bottom adds draw, and the sides add English.",
+    tip: "The label under the cue ball confirms the spin you selected.",
+    target: "spin",
+    action: "NEXT: BANK SHOT",
+  },
+  {
+    kicker: "LESSON 5 • BANK SHOTS",
+    title: "Read the bounce",
+    copy: "Aim away from the rack until the guide bends off a rail, pull to at least 35%, then release to play the shot.",
+    tip: "The line previews every rail reflection before you commit.",
+    target: "table",
+    action: "PLAY THE BANK",
+  },
+];
 
 app.innerHTML = `
   <main class="app-shell">
@@ -97,6 +145,12 @@ app.innerHTML = `
 
         <nav class="mode-menu" aria-label="Choose a game mode">
           <div class="menu-heading"><span>CHOOSE YOUR GAME</span><i></i></div>
+          <button class="tutorial-callout" type="button" data-action="tutorial">
+            <span class="tutorial-callout-icon">◎</span>
+            <span class="mode-copy"><small data-tutorial-menu-kicker>${state.tutorialComplete ? "LESSONS COMPLETE" : "NEW PLAYER? START HERE"}</small><strong>GUIDED TUTORIAL</strong><em>Aim • Power • Banks • Spin</em></span>
+            <span class="tutorial-callout-status" data-tutorial-menu-status>${state.tutorialComplete ? "REPLAY" : "5 LESSONS"}</span>
+            <span class="mode-arrow">→</span>
+          </button>
           <button class="mode-card mode-primary" type="button" data-action="solo">
             <span class="mode-number">01</span>
             <span class="mode-copy"><strong>SOLO PRACTICE</strong><small>Free play • Unlimited shots</small></span>
@@ -144,6 +198,24 @@ app.innerHTML = `
       </header>
 
       <div class="game-content">
+        <section class="tutorial-panel" data-tutorial-panel aria-live="polite" hidden>
+          <div class="tutorial-coach" aria-hidden="true"><span>8</span></div>
+          <div class="tutorial-panel-copy">
+            <div class="tutorial-panel-head">
+              <span data-tutorial-kicker>WELCOME TO THE CLUB</span>
+              <div class="tutorial-progress" data-tutorial-progress aria-label="Tutorial progress"></div>
+            </div>
+            <h2 data-tutorial-title>Know the table</h2>
+            <p data-tutorial-copy></p>
+            <small data-tutorial-tip></small>
+          </div>
+          <div class="tutorial-panel-actions">
+            <button type="button" class="tutorial-text-action" data-action="tutorial-back">BACK</button>
+            <button type="button" class="tutorial-text-action" data-action="tutorial-skip">SKIP</button>
+            <button type="button" class="tutorial-next" data-action="tutorial-next" disabled><span data-tutorial-action>CONTINUE</span> →</button>
+          </div>
+        </section>
+
         <div class="status-row">
           <div class="player-status active" data-player-card="0">
             <span class="player-dot one"></span>
@@ -281,6 +353,7 @@ function persist() {
     longestRun: state.longestRun,
     difficulty: state.difficulty,
     raceTo: state.raceTo,
+    tutorialComplete: state.tutorialComplete,
   }));
 }
 
@@ -941,9 +1014,116 @@ function applySpin() {
   state.spinFrames -= 1;
 }
 
+function updateTutorialMenuStatus() {
+  const kicker = document.querySelector("[data-tutorial-menu-kicker]");
+  const status = document.querySelector("[data-tutorial-menu-status]");
+  if (kicker) kicker.textContent = state.tutorialComplete ? "LESSONS COMPLETE" : "NEW PLAYER? START HERE";
+  if (status) status.textContent = state.tutorialComplete ? "REPLAY" : `${TUTORIAL_LESSON_COUNT} LESSONS`;
+}
+
+function tutorialBankBounces() {
+  if (!state.aiming) return 0;
+  const cue = ballEntries.find((entry) => entry.number === 0 && !entry.potted);
+  if (!cue) return 0;
+  const guide = computeGuide(cue.body.position, state.direction);
+  return Math.max(0, guide.points.length - 2);
+}
+
+function updateTutorialRequirement() {
+  if (state.mode !== "tutorial" || state.tutorialStep >= TUTORIAL_LESSON_COUNT) return;
+  const spinMagnitude = Math.hypot(state.spin.x, state.spin.y);
+  const requirementMet = tutorialRequirementMet(state.tutorialStep, {
+    aiming: state.aiming,
+    power: state.power,
+    spinMagnitude,
+    bankBounces: tutorialBankBounces(),
+  });
+  if (requirementMet !== state.tutorialReady) {
+    state.tutorialReady = requirementMet;
+    updateTutorialPanel();
+  }
+}
+
+function updateTutorialPanel() {
+  const panel = document.querySelector("[data-tutorial-panel]");
+  const gameView = document.querySelector("[data-view='game']");
+  if (!panel || !gameView) return;
+  const isTutorial = state.mode === "tutorial";
+  panel.hidden = !isTutorial;
+  gameView.classList.toggle("tutorial-mode", isTutorial);
+  if (!isTutorial) {
+    delete gameView.dataset.tutorialTarget;
+    return;
+  }
+
+  const complete = state.tutorialStep >= TUTORIAL_LESSON_COUNT;
+  const step = complete
+    ? {
+        kicker: "TUTORIAL COMPLETE",
+        title: "You own the basics",
+        copy: "You aimed, set power, applied English, and played a readable bank shot. The full table is yours now.",
+        tip: "Continue in free practice, challenge the CPU, or open a private table.",
+        target: "none",
+        action: "FREE PRACTICE",
+      }
+    : TUTORIAL_STEPS[state.tutorialStep];
+  gameView.dataset.tutorialTarget = step.target;
+  document.querySelector("[data-tutorial-kicker]").textContent = step.kicker;
+  document.querySelector("[data-tutorial-title]").textContent = step.title;
+  document.querySelector("[data-tutorial-copy]").textContent = step.copy;
+  document.querySelector("[data-tutorial-tip]").textContent = step.tip;
+
+  const progress = document.querySelector("[data-tutorial-progress]");
+  progress.innerHTML = Array.from({ length: TUTORIAL_LESSON_COUNT }, (_, index) => {
+    const className = index < state.tutorialStep ? "complete" : index === state.tutorialStep ? "current" : "";
+    return `<i class="${className}" aria-hidden="true"></i>`;
+  }).join("");
+  progress.setAttribute(
+    "aria-label",
+    complete ? "Tutorial complete" : `Lesson ${state.tutorialStep + 1} of ${TUTORIAL_LESSON_COUNT}`,
+  );
+
+  const back = document.querySelector("[data-action='tutorial-back']");
+  const skip = document.querySelector("[data-action='tutorial-skip']");
+  const next = document.querySelector("[data-action='tutorial-next']");
+  back.hidden = complete;
+  back.disabled = state.tutorialStep === 0;
+  skip.textContent = complete ? "MAIN MENU" : "SKIP";
+  next.disabled = !complete && (!state.tutorialReady || state.tutorialStep === 4);
+  next.classList.toggle("ready", complete || state.tutorialReady);
+  const actionLabel = state.tutorialStep === 4 && state.tutorialReady ? "RELEASE TO SHOOT" : step.action;
+  document.querySelector("[data-tutorial-action]").textContent = actionLabel;
+}
+
+function advanceTutorial() {
+  if (state.mode !== "tutorial") return;
+  if (state.tutorialStep >= TUTORIAL_LESSON_COUNT) {
+    startGame("solo");
+    toast("Tutorial complete • Free practice unlocked");
+    return;
+  }
+  if (!state.tutorialReady || state.tutorialStep === 4) return;
+  cancelAim();
+  state.tutorialStep += 1;
+  state.tutorialReady = tutorialRequirementMet(state.tutorialStep);
+  if (state.tutorialStep === 3) resetSpinUi();
+  syncGameUi();
+  updateTutorialPanel();
+}
+
+function backTutorial() {
+  if (state.mode !== "tutorial" || state.tutorialStep <= 0 || state.tutorialStep >= TUTORIAL_LESSON_COUNT) return;
+  cancelAim();
+  state.tutorialStep -= 1;
+  state.tutorialReady = tutorialRequirementMet(state.tutorialStep);
+  syncGameUi();
+  updateTutorialPanel();
+}
+
 function canLocalPlayerShoot() {
   if (state.gameOver || state.ballsMoving || state.aiming) return false;
   if (state.mode === "cpu" && state.currentPlayer === 1) return false;
+  if (state.mode === "tutorial" && ![1, 2, 4].includes(state.tutorialStep)) return false;
   return true;
 }
 
@@ -957,6 +1137,7 @@ function beginAim(event) {
   state.power = 0;
   updateShotFromPointer(point);
   document.querySelector("[data-turn-banner]").classList.add("aiming");
+  updateTutorialRequirement();
 }
 
 function moveAim(event) {
@@ -979,6 +1160,7 @@ function updateShotFromPointer(point) {
   state.power = Math.round(clamp((magnitude / 190) * 100, 0, 100));
   document.querySelector("[data-power-value]").textContent = String(state.power);
   document.querySelector("[data-power-fill]").style.height = `${state.power}%`;
+  updateTutorialRequirement();
 }
 
 function releaseAim(event) {
@@ -987,6 +1169,19 @@ function releaseAim(event) {
   document.querySelector("[data-turn-banner]").classList.remove("aiming");
   const power = state.power;
   state.aiming = false;
+  if (state.mode === "tutorial" && state.tutorialStep < 4) {
+    const lessonPassed = state.tutorialReady;
+    cancelAim();
+    state.tutorialReady = lessonPassed;
+    updateTutorialPanel();
+    return;
+  }
+  if (state.mode === "tutorial" && state.tutorialStep === 4 && !state.tutorialReady) {
+    cancelAim();
+    toast("Aim for a rail bounce and pull to at least 35%");
+    updateTutorialPanel();
+    return;
+  }
   if (power < 4) {
     state.power = 0;
     document.querySelector("[data-power-value]").textContent = "0";
@@ -1054,6 +1249,20 @@ function restoreCueBall() {
 
 function finishShot() {
   state.ballsMoving = false;
+  if (state.mode === "tutorial" && state.tutorialStep === 4) {
+    restoreCueBall();
+    state.tutorialStep = TUTORIAL_LESSON_COUNT;
+    state.tutorialReady = true;
+    state.tutorialComplete = true;
+    state.power = 0;
+    persist();
+    updateTutorialMenuStatus();
+    syncGameUi();
+    updateTutorialPanel();
+    audio.win();
+    toast("Tutorial complete • Precision unlocked");
+    return;
+  }
   const wasBreak = state.breakShot;
   state.breakShot = false;
   restoreCueBall();
@@ -1074,6 +1283,7 @@ function finishShot() {
 }
 
 function resolveEightBall() {
+  if (state.mode === "tutorial") return;
   const result = evaluateEightBall({
     pottedNumber: 8,
     playerGroup: state.groups[state.currentPlayer],
@@ -1148,28 +1358,39 @@ function updateBallTray() {
 
 function syncGameUi() {
   const names = {
+    tutorial: ["GUIDED TUTORIAL", state.tutorialStep >= TUTORIAL_LESSON_COUNT ? "LESSONS COMPLETE" : `LESSON ${state.tutorialStep + 1} OF ${TUTORIAL_LESSON_COUNT}`],
     solo: ["SOLO PRACTICE", "YOUR TABLE"],
     cpu: ["VERSUS CPU", state.currentPlayer === 0 ? "YOUR TURN" : "CPU TURN"],
     multiplayer: ["MULTIPLAYER", state.currentPlayer === 0 ? "PLAYER 1 TURN" : "PLAYER 2 TURN"],
   };
   document.querySelector("[data-mode-label]").textContent = names[state.mode][0];
   document.querySelector("[data-turn-label]").textContent = names[state.mode][1];
-  document.querySelector("[data-player-two-name]").textContent = state.mode === "cpu" ? "CPU RIVAL" : "PLAYER 2";
+  document.querySelector("[data-player-two-name]").textContent = state.mode === "tutorial" ? "TABLE COACH" : state.mode === "cpu" ? "CPU RIVAL" : "PLAYER 2";
   document.querySelector("[data-player-one-group]").textContent = groupLabel(state.groups[0]);
   document.querySelector("[data-player-two-group]").textContent = groupLabel(state.groups[1]);
   document.querySelector("[data-player-one-score]").textContent = `P1  ${state.wins[0]}`;
-  document.querySelector("[data-player-two-score]").textContent = `${state.mode === "cpu" ? "CPU" : "P2"}  ${state.wins[1]}`;
+  document.querySelector("[data-player-two-score]").textContent = `${state.mode === "tutorial" ? "COACH" : state.mode === "cpu" ? "CPU" : "P2"}  ${state.wins[1]}`;
   document.querySelectorAll("[data-player-card]").forEach((card, index) => {
     card.classList.toggle("active", index === state.currentPlayer);
   });
-  document.querySelector("[data-table-status]").textContent = state.breakShot
+  document.querySelector("[data-table-status]").textContent = state.mode === "tutorial"
+    ? state.tutorialStep >= TUTORIAL_LESSON_COUNT
+      ? "LESSONS COMPLETE"
+      : TUTORIAL_STEPS[state.tutorialStep].title.toUpperCase()
+    : state.breakShot
     ? "BREAK THE RACK"
     : state.mode === "solo"
       ? "PRACTICE TABLE"
       : state.currentPlayer === 1 && state.mode === "cpu"
         ? "CPU READING TABLE"
         : "LINE UP YOUR SHOT";
-  document.querySelector("[data-turn-banner]").textContent = state.mode === "cpu" && state.currentPlayer === 1
+  document.querySelector("[data-turn-banner]").textContent = state.mode === "tutorial"
+    ? state.tutorialStep >= TUTORIAL_LESSON_COUNT
+      ? "TUTORIAL COMPLETE"
+      : state.tutorialStep === 4
+      ? "BANK SHOT"
+      : "COACH MODE"
+    : state.mode === "cpu" && state.currentPlayer === 1
     ? "CPU AIMING"
     : state.mode === "solo"
       ? "FREE PLAY"
@@ -1191,6 +1412,10 @@ function startGame(mode, options = {}) {
   state.ballsMoving = false;
   state.aiming = false;
   state.spin = { x: 0, y: 0 };
+  if (mode === "tutorial") {
+    state.tutorialStep = 0;
+    state.tutorialReady = true;
+  }
   document.querySelector("[data-result-card]").hidden = true;
   document.querySelector("[data-shot-number]").textContent = "01";
   document.querySelector("[data-view='menu']").hidden = true;
@@ -1200,6 +1425,7 @@ function startGame(mode, options = {}) {
   createPhysicsWorld();
   syncGameUi();
   resetSpinUi();
+  updateTutorialPanel();
   persist();
   requestAnimationFrame(() => tableRuntime.resize());
 }
@@ -1208,6 +1434,7 @@ function exitGame() {
   clearTimeout(cpuTimer);
   state.aiming = false;
   state.ballsMoving = false;
+  updateTutorialPanel();
   document.querySelector("[data-view='game']").hidden = true;
   document.querySelector("[data-view='menu']").hidden = false;
   closeModal();
@@ -1259,7 +1486,7 @@ function modalTemplate(kind) {
         <article><span>03</span><h3>Add English</h3><p>Move the tip dot for topspin, draw, or side spin, then release to strike.</p></article>
       </div>
       <p class="rules-copy">Clear solids or stripes, then legally pocket the 8-ball. The break leaves the table open. No foul penalties or ball-in-hand.</p>
-      <button class="modal-primary" type="button" data-action="solo">PRACTICE THE SHOT <span>→</span></button>`,
+      <button class="modal-primary" type="button" data-action="tutorial">START GUIDED TUTORIAL <span>→</span></button>`,
     stats: `
       <p class="modal-eyebrow">PLAYER CARD</p>
       <h2 id="modal-title">Your table record.</h2>
@@ -1321,6 +1548,7 @@ function updateSpinFromPointer(event) {
   const vertical = state.spin.y > 0.35 ? "TOP" : state.spin.y < -0.35 ? "DRAW" : "";
   const horizontal = state.spin.x > 0.35 ? "RIGHT" : state.spin.x < -0.35 ? "LEFT" : "";
   document.querySelector("[data-spin-label]").textContent = [vertical, horizontal].filter(Boolean).join(" + ") || "CENTER";
+  updateTutorialRequirement();
 }
 
 const spinControl = document.querySelector("[data-spin-control]");
@@ -1364,6 +1592,7 @@ document.addEventListener("click", async (event) => {
   }
 
   const actions = {
+    tutorial: () => startGame("tutorial"),
     solo: () => startGame("solo"),
     cpu: () => openModal("cpu"),
     multiplayer: () => openModal("multiplayer"),
@@ -1394,6 +1623,15 @@ document.addEventListener("click", async (event) => {
       }
     },
     "start-multiplayer": () => startGame("multiplayer"),
+    "tutorial-back": backTutorial,
+    "tutorial-next": advanceTutorial,
+    "tutorial-skip": () => {
+      if (state.tutorialStep >= TUTORIAL_LESSON_COUNT) exitGame();
+      else {
+        startGame("solo");
+        toast("Tutorial skipped • Free practice is ready");
+      }
+    },
     "exit-game": exitGame,
     replay,
     rerack: replay,
@@ -1422,4 +1660,5 @@ window.addEventListener("keydown", (event) => {
 });
 
 setSoundLabels();
+updateTutorialMenuStatus();
 createMenuScene();

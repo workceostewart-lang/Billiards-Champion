@@ -33,7 +33,7 @@
 - Win condition: legally pot the 8-ball after clearing your assigned group.
 - **No foul detection/consequences**: the game does not track or penalize fouls (scratches, wrong-ball-first contact, etc.) as a separate rule system. A missed or failed shot simply ends the turn and passes play to the other player — kept simple by design, per direction.
 - **No ball-in-hand**: since there's no foul system, there's no ball-in-hand mechanic. The cue ball is only manually placed at the start of a game/rack (e.g., on the break), and otherwise stays wherever it comes to rest after each shot.
-- (Same CPU/multiplayer/versus-CPU structure to be defined in Section 7, consistent with the approach used across the studio's other games.)
+- (Same CPU/multiplayer/versus-CPU structure to be defined in Section 8, consistent with the approach used across the studio's other games.)
 
 ## 6. Aiming & Shot Feedback (Key Differentiator)
 
@@ -48,7 +48,17 @@ This is the area most critical to gameplay feel — from the reference screensho
 - **Angle readout**: a numeric degree indicator (right side of screen) showing the precise current aim angle as the player adjusts their shot.
 - **Dual aim-guide lines**: when aiming at an object ball, show two lines from the cue ball — one tracing the cue ball's path into contact, and a second showing the predicted **object ball's path** after contact — so the player can read both where their cue ball is going and where the ball they're hitting will go.
 
-## 7. Game Modes
+## 7. Guided Tutorial
+
+- The main menu includes a prominent **Guided Tutorial** entry for new players and a replay state after completion.
+- The tutorial contains five short, sequential lessons: table and 8-ball basics; pull-back aiming; readable shot power; spin/English; and a playable rail-bounce bank shot.
+- Lessons are interaction-gated. Players advance only after demonstrating the current mechanic on the live Three.js table: aim with a non-zero pull, reach at least 35% power, move the cue-tip contact point off center, and preview then release a bank shot with at least one rail reflection.
+- The aim and power lessons do not strike the cue ball, so players can learn the input safely. The final bank-shot lesson plays through the real Matter.js physics simulation.
+- Each lesson displays its goal, coaching copy, a practical tip, five-step progress, Back, Skip, and a context-aware primary action. Completion offers a direct handoff to Solo Practice.
+- Tutorial completion auto-saves locally and never removes the replay option.
+- On portrait mobile, the coaching panel and controls must remain compact enough that the full table, every ball, all six pockets, the power meter, and spin control remain visible without horizontal cropping.
+
+## 8. Game Modes
 
 Consistent with the studio's existing menu pattern (Solo / Versus CPU / Multiplayer):
 
@@ -57,23 +67,23 @@ Consistent with the studio's existing menu pattern (Solo / Versus CPU / Multipla
 3. **Multiplayer (Room Code)** — host creates a room and configures match settings; second player joins via room code on their own device. Players alternate turns per official 8-ball turn rules (player continues shooting as long as they legally pot a ball from their group; turn passes to the opponent on a miss or foul).
    - **Camera behavior**: both players view the **same shared table** at all times (unlike Golf Masters' per-player course view) — there is no camera switch between turns. Instead, only the **active player** can aim and shoot; the non-active player watches the same live table view in a read-only spectator state until the turn passes back to them.
 
-## 8. Progress & Scoring
+## 9. Progress & Scoring
 
 - Match score tracked as games won (best-of or race-to-X, configurable at room/match creation, consistent with other studio titles' point-to-win framing).
-- Progress/settings auto-save between sessions.
+- Progress/settings and tutorial completion auto-save between sessions.
 
-## 9. Reference Art
+## 10. Reference Art
 
 The three table-layout reference screenshots (horizontal wood-rail table with green felt, standard 6-pocket layout, red/blue ball coloring with numbered/marked 8-ball, white cue ball, thin pull-back aim line to be thickened/darkened, mid-game scattered ball state) define the baseline visual and table layout. The pull-back indicator and bank-shot trajectory bending described in Section 6 are explicit improvements to make on top of this reference, not features already shown working correctly in the screenshots.
 
 A fourth reference screenshot (a classic 8-ball-style break setup) defines the target **aiming HUD**: vertical power meter with % readout, degree-angle readout, dual cue-ball/object-ball aim-guide lines, and the circular contact-point spin/english selector — all specified in Section 6.
 
-## 10. Out of Scope (v1)
+## 11. Out of Scope (v1)
 
 - Non-8-ball variants (9-ball, straight pool, snooker) — not requested, flag for future consideration.
 - Monetization — not specified.
 
-## 11. Open Questions
+## 12. Open Questions
 
 - CPU difficulty tiers (easy/medium/hard) — assumed desirable for consistency with other studio titles; confirm.
 - Maximum number of rail bounces to render in the trajectory preview before cutting off.

@@ -9,6 +9,7 @@ import {
   rackPositions,
   shotAngleDegrees,
   traceBankPath,
+  tutorialRequirementMet,
 } from "../src/game-rules.js";
 
 test("rack contains every numbered ball once with eight in the center", () => {
@@ -57,4 +58,16 @@ test("eight ball is legal only after the assigned group is clear", () => {
     evaluateEightBall({ pottedNumber: 4, playerGroup: BALL_GROUPS.SOLIDS, remainingGroupBalls: 0 }),
     null,
   );
+});
+
+test("tutorial lessons unlock only after their real interaction is demonstrated", () => {
+  assert.equal(tutorialRequirementMet(0), true);
+  assert.equal(tutorialRequirementMet(1, { aiming: true, power: 4 }), false);
+  assert.equal(tutorialRequirementMet(1, { aiming: true, power: 5 }), true);
+  assert.equal(tutorialRequirementMet(2, { power: 34 }), false);
+  assert.equal(tutorialRequirementMet(2, { power: 35 }), true);
+  assert.equal(tutorialRequirementMet(3, { spinMagnitude: 0.34 }), false);
+  assert.equal(tutorialRequirementMet(3, { spinMagnitude: 0.35 }), true);
+  assert.equal(tutorialRequirementMet(4, { bankBounces: 1, power: 34 }), false);
+  assert.equal(tutorialRequirementMet(4, { bankBounces: 1, power: 35 }), true);
 });

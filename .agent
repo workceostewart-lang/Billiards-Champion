@@ -13,5 +13,8 @@ Technical direction:
 - The visual language uses rich felt green, electric blue, red, gold, warm wood, and the full billiard-ball palette.
 - Sound effects must respect the saved sound preference.
 - Solo practice, versus CPU, and room-code multiplayer entry points stay visible from the primary menu.
+- The guided tutorial is a first-class menu entry with five interaction-gated lessons: table/rules, aim, power, spin/English, and a playable bank shot.
+- Tutorial overlays must never cover or crop the playable surface. Include progress, Back, Skip, completion feedback, replay, and a handoff into Solo Practice.
+- Tutorial completion persists locally, while replay remains available from the menu.
 
-Before shipping, run the automated rules tests, production build, and desktop/mobile browser checks. Verify there is no horizontal overflow and that the complete table remains on screen at 390×844.
+Before shipping, run the automated rules tests, production build, and desktop/mobile browser checks. Complete the guided tutorial with real pointer input, verify there is no horizontal overflow, and confirm the complete table remains visible at 390×844.
