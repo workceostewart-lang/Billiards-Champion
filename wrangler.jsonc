@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "billiards-champion",
+  "compatibility_date": "2026-07-29",
+  "routes": [
+    {
+      "pattern": "billiards-champion.fantomzone.app",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

@@ -1,0 +1,17 @@
+# Billiards Champion agent brief
+
+Treat `Billiards-Champion-PRD.md` as the product source of truth.
+
+Current priority: Menu/UI first, followed by a polished playable 8-ball table.
+
+Technical direction:
+- Three.js/WebGL renders the menu scene and the shared top-down table.
+- Matter.js owns browser-side ball, rail, and collision physics.
+- The full 2:1 table, every ball, all six pockets, and the aiming HUD must remain visible on portrait mobile screens.
+- Desktop mouse and mobile touch share the same pull-back-to-shoot interaction.
+- Aim assistance includes up to three readable rail bounces, impact guidance, object-ball direction, power %, angle, and spin/English.
+- The visual language uses rich felt green, electric blue, red, gold, warm wood, and the full billiard-ball palette.
+- Sound effects must respect the saved sound preference.
+- Solo practice, versus CPU, and room-code multiplayer entry points stay visible from the primary menu.
+
+Before shipping, run the automated rules tests, production build, and desktop/mobile browser checks. Verify there is no horizontal overflow and that the complete table remains on screen at 390×844.
