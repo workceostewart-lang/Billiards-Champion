@@ -458,7 +458,7 @@ function setupRenderer(canvas, scene, camera) {
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const resize = () => {
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(1, Math.floor(rect.width));
@@ -772,8 +772,11 @@ function setupTableRuntime() {
     const delta = clamp(time - frameTime, 8, 32);
     frameTime = time;
     if (engine) {
-      Engine.update(engine, delta);
-      applySpin();
+      const substeps = Math.ceil(delta / 16.667);
+      for (let step = 0; step < substeps; step += 1) {
+        Engine.update(engine, delta / substeps);
+        applySpin();
+      }
       detectPockets();
       syncBallMeshes();
       trackSettling();
